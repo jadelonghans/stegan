@@ -15,11 +15,13 @@ for each pixel(x,y) in carrier_file:
 	r = 7bits of carrier + 1 bit of passenger
 
 Specifications
-1	Can take only png files as input. Currently reading carrier of 1920x1080 and passenger file as 170x170
-2	Hold the r,g,b data of passenger file in memory, 170x170x3 8-bit values
+1	Can take only png files as input. 
+2	Fills in the first ( length x breadth )	number of pixels. starting from top to bottom, then next column of pixels on the right
 
 Problems:
+##Currently reading carrier of 1920x1080 and passenger file as 170x170
 1	Writing the pixel does not result in 8 pixels
+2	For z=0 values, you cannot address them with [i:i+1], replace them with 0 manually
 
 """
 from PIL import Image
@@ -27,8 +29,11 @@ import sys
 
 def dec_to_bin(x):
 	# from stackoverflow
-	# bin(7) returns 0b111
-    return (bin(x)[2:])		#returns in the form of list, need to cast using int. e.g. int(dec_to_bin(10))[:7]
+	# returns dec_to_bin(12) as 00001100,
+	ans = bin(x)[2:]
+	while (len(ans) < 8):
+		ans = "0" + ans
+	return (ans)		#returns in the form of list, need to cast using int before use as integer. e.g. int(dec_to_bin(10))[:7]
 
 def edit_pixel(pic,carrier,output):
 	# reading data to be encoded
@@ -47,49 +52,85 @@ def edit_pixel(pic,carrier,output):
 			g_bin = dec_to_bin(g)
 			b_bin = dec_to_bin(b)
 
+			#r_bin = r_bin + (8 - len(r_bin))
+			print (r,g,b),"->",(r_bin,g_bin,b_bin)
+			if( r_bin != "0" and g_bin != "0" and b_bin != "0"):
+				if(len(r_bin)!=8 or len(g_bin)!=8 or len(b_bin)!=8):
+					print "passenger r,g,b value did not make 8 digits"
+					#exit(1)
+
+			#8 digit binary values of r,g,b stored in the respective lists
 			r_vals.append(r_bin)
 			g_vals.append(g_bin)
 			b_vals.append(b_bin)
 
-	#print (r_vals,g_vals,b_vals)
+	# for x in xrange(0,500):		#find the occurence of first red value of pixel which is not "0"
+	# 	print r_vals[x]
+	# 	if(r_vals[x] != "0"):
+	# 		break
+
+	#return 			""""""""""""""""""""""""""""""""""""""""""""""""
+
+	length = len(r_vals)
 
 	# reading data of the carrier image
-	print carrier
+	print "here"
 
 	pixel_cursor = 0
 	i = 0
 	for x in xrange(carrier.size[0]):
 		for y in xrange(carrier.size[1]):
 			r, g, b, _ = carrier.getpixel((x, y))
-			#if (r % 8 == 1 or g % 8 == 1 or b % 8 == 1):
-			#print(r,g,b)
 
-			print r_bin[i:(i+1)], g_bin[i:(i+1)], b_bin[i:(i+1)]
-			
-			r_cr_bin = dec_to_bin(r)[:7] + r_bin[i:(i+1)]
-			g_cr_bin = dec_to_bin(g)[:7] + g_bin[i:(i+1)]
-			b_cr_bin = dec_to_bin(b)[:7] + b_bin[i:(i+1)]
+			# print r_vals[pixel_cursor], g_vals[pixel_cursor], b_vals[pixel_cursor]
+			# print r_vals[pixel_cursor][i:(i+1)], g_vals[pixel_cursor][i:(i+1)], b_vals[pixel_cursor][i:(i+1)]
 
-			print (dec_to_bin(r),dec_to_bin(g),dec_to_bin(b)), "->", (r_cr_bin,g_cr_bin,b_cr_bin) #
+			# if(r_vals[pixel_cursor] == "0"):
+			# 	r_cr_bin = dec_to_bin(r)[:7] + "0"	
+			# else:
+			r_cr_bin = dec_to_bin(r)[:7] + r_vals[pixel_cursor][i:(i+1)]
+
+			# if(g_vals[pixel_cursor] == "0"):	
+			# 	g_cr_bin = dec_to_bin(g)[:7] + "0"
+			# else:
+			g_cr_bin = dec_to_bin(g)[:7] + g_vals[pixel_cursor][i:(i+1)]
+
+			# if(b_vals[pixel_cursor] == "0"):	
+			# 	b_cr_bin = dec_to_bin(b)[:7] + "0"
+			# else:
+			b_cr_bin = dec_to_bin(b)[:7] + b_vals[pixel_cursor][i:(i+1)]
+
+
+			if(len(r_cr_bin)!=8 or len(g_cr_bin)!=8 or len(b_cr_bin)!=8):
+				print "final r,g,b value did not make 8 digits"
+				exit(1)
 
 			r = int(r_cr_bin,2)
 			g = int(g_cr_bin,2)
 			b = int(b_cr_bin,2)
-			
+
+			print "at", (x,y), (dec_to_bin(r),dec_to_bin(g),dec_to_bin(b)), "->", (r_cr_bin,g_cr_bin,b_cr_bin)#, "->", (r,g,b) #
+
 			output.putpixel((x,y), (r,g,b))
-			"""
-			i = i + 1
-			if(i == 8):
-				i = 0
-			"""
+	
+		# 	i = i + 1
+		# 	if(i == 8):
+		# 		break
+		# if(i == 8):
+		# 	break
 
 			i = i + 1
 			if(i == 8):
+				i = 0	# start from bit position 1 of next pixel
+				pixel_cursor = pixel_cursor + 1	#use data of next pixel in array r_vals, g_vals, b_vals 
+			if(pixel_cursor == (length-1)):
+				print "hiding finished at", (x,y)
 				break
 
-		if(i == 8):
+		if(pixel_cursor == (length-1)):
 			break
 
+	print len(r_vals), "pixels encountered"
 
 def read_pixel(pic,carrier,output):
 	#new_img = Image.new('RGB', pic.size)
@@ -108,12 +149,15 @@ if __name__ == '__main__':
 	print("Hello")
 
 	x = 250
-	y = 179
+	y = 127
 	i = 7
 	print (dec_to_bin(x) + " " + dec_to_bin(y))
+	print "12", dec_to_bin(12)
 	for i in xrange(0,8):
-		print i
-		print (dec_to_bin(x)[:7] + dec_to_bin(y)[i:(i+1)])
+		#print i, (dec_to_bin(x)[:7] + dec_to_bin(y)[i:(i+1)])
+		print
+
+	print (dec_to_bin(x)[:6] + "01")	#checking to see if this add is possible
 
 	if(len(sys.argv) <= 3):
 		usage()
