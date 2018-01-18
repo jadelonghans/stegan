@@ -1,20 +1,19 @@
 """
+Dangol Jeshan
 Keywords: passenger, carrier, composite_image
 
 Algorithm:
-1	Hold in memory the rgb data of each pixel in the passenger file.
-2	Replace the LSB of rgb data of each pixel in the carrier file.
+Hide mode:
+1	Encode image height and width as 16 bit digits in the first two columns of carrier image respectively.
+	a.	Each bit of 16 bit digits are stored as last bit of pixel from top to bottom. (16 bits of min height required)
+2	Replace the (level: var) number of lower bits of first 8 pixels (r,g,b) starting from (2,0) to (2,height)
+3	Repeat (2) for all pixels in passenger image, encoding in pixels of carrier image from top to bottom.
 
-Pseudocode:
-
-for each pixel(x,y) in passenger_file:
-	convert r,g,b values to binary representation
-	store all of r,g,b values of all pixels in array for r,g,b
-
-for each pixel(x,y) in carrier_file:
-	convert r,g,b values to binary representation
-	#replace LSB of each r,g,b values with that of passenger file
-	r = 7bits of carrier + 1 bit of passenger
+Show mode:
+1	Read header of the file.
+	a. 	Collect the LSB of first 16 pixels in 1st and 2nd column of the composite image, to extract passenger image height and width respectively.
+2	Start to read pixel data of passenger image from the 3rd column of composite image.
+	a.	Write to the output file once 8 bit pixel data is collected from LSB
 
 Specifications
 1	Can take only png files as input, outputs file in png format.
@@ -23,11 +22,14 @@ Specifications
 	From top to bottom, then next column of pixels on the right
 
 Problems:
-##Currently reading carrier of 1920x1080 and passenger file as 170x170
+	Hide mode:
 1	Writing the pixel does not result in 8 pixels (solved)
 2	For z=0 values, you cannot address them with [i:i+1], replace them with 0 manually (solved)
 3 	How to write the info of original file, like resolution of passenger file inside the composite file.
 	store magic word(can be 4LSB of length of composite image), length (16-bits), breadth (16-bits)
+	
+	Show mode:
+1	Check if the composite image actually has file included in it.
 
 """
 from PIL import Image
@@ -46,7 +48,7 @@ def dec_to_bin(x, length = 8):	#default length is 8 bits
 
 def edit_pixel(passenger,carrier,output):
 	
-	# reading data to be encoded
+	#Part1: reading data to be encoded
 	r_vals = []
 	g_vals = []
 	b_vals = []
@@ -79,9 +81,7 @@ def edit_pixel(passenger,carrier,output):
 
 	last_index = len(r_vals) - 1
 
-	# reading data of the carrier image
-	print ("here")
-
+	#Part2: encoding into carrier
 	pixel_cursor = 0
 	i = 0
 	for x in xrange(2,carrier.size[0]): 	#start hiding from column 2 (3rd column)
@@ -113,7 +113,6 @@ def edit_pixel(passenger,carrier,output):
 
 			elif(pixel_cursor == (last_index + 1)):
 				result_x, result_y = (x,y)	#for showing information at last
-
 			# else:
 			# 	print ("at", (x,y), "writing unchanged data")
 
@@ -128,18 +127,36 @@ def edit_pixel(passenger,carrier,output):
 		"""outer loop"""
 
 	#print (len(r_vals), "pixel data encoded inside the carrier")
-	print "Finished"
 	print "Encoding finished at cursor", (result_x, result_y) 
 	return
 
 def write_header():
 	#write the header information into the carrier
+	psngr_dimension = []
 	#store resolution
-	psngr_height = dec_to_bin(passenger.size[0], 16)		#return height as 1 bit binary values
-	psngr_width = dec_to_bin(passenger.size[1], 16)
-	print psngr_height,psngr_width
+	psngr_dimension.append (dec_to_bin(passenger.size[0], 16))	#return height as 1 bit binary values
+	psngr_dimension.append (dec_to_bin(passenger.size[1], 16))
+	print psngr_dimension[0], psngr_dimension[1]
 
 	#write_header() : to encode height and width in first two columns
+	for x in xrange(2):
+		i = 0
+		payload = psngr_dimension[x]
+		for y in xrange(carrier.size[1]):
+			data = carrier.getpixel((x, y))
+		
+			r = data[0]
+			g = data[1]
+			b = data[2]
+			if(i < 16):	#16 digits to be written
+				r = dec_to_bin(r)[:7] + payload[i:(i+1)]
+				r = int(r,2)
+				#print r
+				i = i + 1
+			else:
+				break;
+			output.putpixel((x,y), (r,g,b))	
+	"""
 	print "encoding psngr_height"
 	x = 0
 	i = 0	#bit_position
@@ -152,7 +169,7 @@ def write_header():
 		if(i < 16):	#16 digits to be written
 			r = dec_to_bin(r)[:7] + psngr_height[i:(i+1)]
 			r = int(r,2)
-			print r
+			#print r
 			i = i + 1
 
 		output.putpixel((x,y), (r,g,b))	
@@ -170,10 +187,11 @@ def write_header():
 		if(i < 16):	#16 digits to be written
 			r = dec_to_bin(r)[:7] + psngr_width[i:(i+1)]
 			r = int(r,2)
-			print r
+			#print r
 			i = i + 1
 
 		output.putpixel((x,y), (r,g,b))	
+	"""
 
 def hide(passenger,carrier,output):
 	#new_img = Image.new('RGB', passenger.size)
@@ -224,7 +242,6 @@ def show(composite_image, output):
 			out_r = out_r + dec_to_bin(r) [ 8 - level : 8 ]
 			out_g = out_g + dec_to_bin(g) [ 8 - level : 8 ]
 			out_b = out_b + dec_to_bin(b) [ 8 - level : 8 ]
-
 
 			if(len(out_r) == 8):
 				pixel_wrote += 1
@@ -279,17 +296,20 @@ if __name__ == '__main__':
 	if(sys.argv[1] == "hide" and len(sys.argv) == 5):
 		print "hiding"
 		passenger = Image.open(sys.argv[2])
-		print(passenger)
+		#print(passenger)
 		carrier = Image.open(sys.argv[3])
-		print(carrier)
-		#need to encode the number of pixels edited too, for decoding
+		#print(carrier)
+
 		output = Image.new('RGB', carrier.size)
 
 		#create a system to ensure the carrier image is large enough to hold the header, and the passenger data
-		size_required = passenger.size[0] * passenger.size[1]
-		size_available = (carrier.size[0] - level) * carrier.size[1]
+		size_required = passenger.size[0] * passenger.size[1] * (8/level)
+		size_available = (carrier.size[0] - 2) * carrier.size[1] 	#2 columns are used to encode image resolution
 		if(carrier.size[1] < 16 or size_available < size_required):
 			print "ERROR: Carrier image not large enough to hide passenger image."
+			exit(1)
+		elif(passenger.size[0] > 32767 or passenger.size[1] > 32767):
+			print "ERROR: Max height/width (= 32767) exceeded."
 			exit(1)
 
 		#start image processing
@@ -311,5 +331,3 @@ if __name__ == '__main__':
 
 	else:
 		usage()
-
-
