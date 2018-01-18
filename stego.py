@@ -61,16 +61,16 @@ def edit_pixel(passenger,carrier,output):
 			r = data[0]
 			g = data[1]
 			b = data[2]
+
 			r_bin = dec_to_bin(r)
 			g_bin = dec_to_bin(g)
 			b_bin = dec_to_bin(b)
 
-			#r_bin = r_bin + (8 - len(r_bin))
-			print (r,g,b),"->",(r_bin,g_bin,b_bin)
-			if( r_bin != "0" and g_bin != "0" and b_bin != "0"):
-				if(len(r_bin)!=8 or len(g_bin)!=8 or len(b_bin)!=8):
-					print "passenger r,g,b value did not make 8 digits"
-					#exit(1)
+			#safety check
+			print (r,g,b),"->",(r_bin,g_bin,b_bin)	
+			if(len(r_bin)!=8 or len(g_bin)!=8 or len(b_bin)!=8):
+				print "passenger r,g,b value did not make 8 digits"
+				exit(-1)
 
 			#8 digit binary values of r,g,b stored in the respective lists
 			r_vals.append(r_bin)
@@ -94,13 +94,12 @@ def edit_pixel(passenger,carrier,output):
 
 			#if hiding is not finished yet
 			if(pixel_cursor <= last_index):
-				# print r_vals[pixel_cursor], g_vals[pixel_cursor], b_vals[pixel_cursor]
-				# print r_vals[pixel_cursor][i:(i+1)], g_vals[pixel_cursor][i:(i+1)], b_vals[pixel_cursor][i:(i+1)]
 
 				r_cr_bin = dec_to_bin(r)[:(8-level)] + r_vals[pixel_cursor][i:(i+level)]
 				g_cr_bin = dec_to_bin(g)[:(8-level)] + g_vals[pixel_cursor][i:(i+level)]
 				b_cr_bin = dec_to_bin(b)[:(8-level)] + b_vals[pixel_cursor][i:(i+level)]
 
+				#safety check
 				if(len(r_cr_bin) != 8 or len(g_cr_bin) != 8 or len(b_cr_bin) != 8):
 					print "final r,g,b value did not make 8 digits"
 					exit(1)
@@ -132,6 +131,7 @@ def edit_pixel(passenger,carrier,output):
 
 def write_header():
 	#write the header information into the carrier
+	
 	psngr_dimension = []
 	#store resolution
 	psngr_dimension.append (dec_to_bin(passenger.size[0], 16))	#return height as 1 bit binary values
@@ -156,42 +156,6 @@ def write_header():
 			else:
 				break;
 			output.putpixel((x,y), (r,g,b))	
-	"""
-	print "encoding psngr_height"
-	x = 0
-	i = 0	#bit_position
-	for y in xrange(carrier.size[1]):	
-		data = carrier.getpixel((x, y))
-		
-		r = data[0]
-		g = data[1]
-		b = data[2]
-		if(i < 16):	#16 digits to be written
-			r = dec_to_bin(r)[:7] + psngr_height[i:(i+1)]
-			r = int(r,2)
-			#print r
-			i = i + 1
-
-		output.putpixel((x,y), (r,g,b))	
-
-	print "encoding psngr_width"
-	x = 1
-	i = 0
-	for y in xrange(carrier.size[1]):
-		data = carrier.getpixel((x, y))
-
-		r = data[0]
-		g = data[1]
-		b = data[2]
-		
-		if(i < 16):	#16 digits to be written
-			r = dec_to_bin(r)[:7] + psngr_width[i:(i+1)]
-			r = int(r,2)
-			#print r
-			i = i + 1
-
-		output.putpixel((x,y), (r,g,b))	
-	"""
 
 def hide(passenger,carrier,output):
 	#new_img = Image.new('RGB', passenger.size)
