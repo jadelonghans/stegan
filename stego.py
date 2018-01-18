@@ -45,9 +45,8 @@ def dec_to_bin(x, length = 8):	#default length is 8 bits
 	return (ans)		#returns in the form of list, need to cast using int before use as integer. e.g. int(dec_to_bin(10))[:7]
 
 def edit_pixel(passenger,carrier,output):
+	
 	# reading data to be encoded
-
-	level = 2	#number of LSB positions to use up for encoding
 	r_vals = []
 	g_vals = []
 	b_vals = []
@@ -55,10 +54,11 @@ def edit_pixel(passenger,carrier,output):
 	#this whole data might be acquired using getpixels() function
 	for x in xrange(passenger.size[0]):
 		for y in xrange(passenger.size[1]):
-			r, g, b, _ = passenger.getpixel((x, y))
-			#if (r % 8 == 1 or g % 8 == 1 or b % 8 == 1):
-			#print(r,g,b)
-			#r,g,b = (255,255,0)
+			data = passenger.getpixel((x, y)) #returns a tuple of (r, g, b, _ )
+			
+			r = data[0]
+			g = data[1]
+			b = data[2]
 			r_bin = dec_to_bin(r)
 			g_bin = dec_to_bin(g)
 			b_bin = dec_to_bin(b)
@@ -86,7 +86,11 @@ def edit_pixel(passenger,carrier,output):
 	i = 0
 	for x in xrange(2,carrier.size[0]): 	#start hiding from column 2 (3rd column)
 		for y in xrange(carrier.size[1]):
-			r, g, b, _ = carrier.getpixel((x, y))
+			data = carrier.getpixel((x, y))
+
+			r = data[0]
+			g = data[1]
+			b = data[2]
 
 			#if hiding is not finished yet
 			if(pixel_cursor <= last_index):
@@ -94,9 +98,7 @@ def edit_pixel(passenger,carrier,output):
 				# print r_vals[pixel_cursor][i:(i+1)], g_vals[pixel_cursor][i:(i+1)], b_vals[pixel_cursor][i:(i+1)]
 
 				r_cr_bin = dec_to_bin(r)[:(8-level)] + r_vals[pixel_cursor][i:(i+level)]
-
 				g_cr_bin = dec_to_bin(g)[:(8-level)] + g_vals[pixel_cursor][i:(i+level)]
-
 				b_cr_bin = dec_to_bin(b)[:(8-level)] + b_vals[pixel_cursor][i:(i+level)]
 
 				if(len(r_cr_bin) != 8 or len(g_cr_bin) != 8 or len(b_cr_bin) != 8):
@@ -118,7 +120,6 @@ def edit_pixel(passenger,carrier,output):
 			# write pixel data to the output file
 			output.putpixel((x,y), (r,g,b))	
 
-			#i = i + 1
 			i = i + level	#increment to use next (level) no. of bits in next loop
 			if(i == 8):
 				i = 0	# start from bit position 1 of next pixel
@@ -143,8 +144,11 @@ def write_header():
 	x = 0
 	i = 0	#bit_position
 	for y in xrange(carrier.size[1]):	
-		r, g, b, _ = carrier.getpixel((x, y))
+		data = carrier.getpixel((x, y))
 		
+		r = data[0]
+		g = data[1]
+		b = data[2]
 		if(i < 16):	#16 digits to be written
 			r = dec_to_bin(r)[:7] + psngr_height[i:(i+1)]
 			r = int(r,2)
@@ -157,7 +161,11 @@ def write_header():
 	x = 1
 	i = 0
 	for y in xrange(carrier.size[1]):
-		r, g, b, _ = carrier.getpixel((x, y))
+		data = carrier.getpixel((x, y))
+
+		r = data[0]
+		g = data[1]
+		b = data[2]
 		
 		if(i < 16):	#16 digits to be written
 			r = dec_to_bin(r)[:7] + psngr_width[i:(i+1)]
@@ -170,8 +178,7 @@ def write_header():
 def hide(passenger,carrier,output):
 	#new_img = Image.new('RGB', passenger.size)
 	write_header()
-	#edit_pixel(passenger,carrier,output)
-	output.save("output.png", "PNG", optimize=True)
+	edit_pixel(passenger,carrier,output)
 	
 	# hist, bins = np.histogram(output,256,[0,256])
 	# plt.hist(output,256,[0,256])
@@ -183,8 +190,9 @@ def read_header():
 	dimension = ["",""]
 	for x in range(2):	#from first 2 columns
 		for y in range(16):
-			r, _ , _ = composite_image.getpixel((x, y))
+			data = composite_image.getpixel((x, y))
 			#print r
+			r = data[0]
 			r = dec_to_bin(r,16)
 			dimension[x] = dimension[x] +  r[15:16]
 		print
@@ -192,11 +200,53 @@ def read_header():
 	return int(dimension[0],2), int(dimension[1],2)
 
 def show(composite_image, output):
+	pixel_limit = output.size[0]*output.size[1]	#total number of pixels in the passenger image
+	pixel_wrote = 0
+	out_r = ""
+	out_g = ""
+	out_b = ""
+
+	# the coordinates of passenger image being written
+	passenger_x = 0
+	passenger_y = 0
+
 	for x in xrange(2,composite_image.size[0]): 	#start reading from column 2 (3rd column)
 		for y in xrange(composite_image.size[1]):
-			r, g, b = composite_image.getpixel((x, y))
+
+			data = composite_image.getpixel((x, y))
+			r = data[0]
+			g = data[1]
+			b = data[2]
 			#extract bit from each pixel until the l*b pixel is reached, taking (level) number of bits from LSB
-		print
+			if(pixel_wrote >= pixel_limit):
+				return
+			""""""
+			out_r = out_r + dec_to_bin(r) [ 8 - level : 8 ]
+			out_g = out_g + dec_to_bin(g) [ 8 - level : 8 ]
+			out_b = out_b + dec_to_bin(b) [ 8 - level : 8 ]
+
+
+			if(len(out_r) == 8):
+				pixel_wrote += 1
+
+				r = int(out_r,2)
+				g = int(out_g,2)
+				b = int(out_b,2)
+				print "at", (passenger_x, passenger_y), ", wrote", (r, g, b) , "~", (out_r, out_g, out_b)
+				output.putpixel( (passenger_x, passenger_y), ( r, g, b) )
+
+				#advance the passenger image coordinates
+				if(passenger_y < (output.size[1] - 1)):
+					passenger_y += 1
+				else:
+					passenger_y = 0
+					passenger_x += 1
+
+				out_r = ""
+				out_g = ""
+				out_b = ""
+
+			""""""
 	return
 
 def usage():
@@ -220,6 +270,9 @@ if __name__ == '__main__':
 
 	print dec_to_bin(x)[:6] + "01"	#checking to see if this add is possible
 
+	"""program starts here"""
+	level = 2	#number of LSB positions to use up for encoding
+
 	if(len(sys.argv) <= 3):
 		usage()
 
@@ -234,14 +287,14 @@ if __name__ == '__main__':
 
 		#create a system to ensure the carrier image is large enough to hold the header, and the passenger data
 		size_required = passenger.size[0] * passenger.size[1]
-		size_available = (carrier.size[0] - 2) * carrier.size[1]
+		size_available = (carrier.size[0] - level) * carrier.size[1]
 		if(carrier.size[1] < 16 or size_available < size_required):
 			print "ERROR: Carrier image not large enough to hide passenger image."
 			exit(1)
 
 		#start image processing
 		hide(passenger, carrier, output)
-
+		output.save(sys.argv[4], "PNG", optimize=True)
 		#print(passenger.histogram)
 		
 		
@@ -252,8 +305,9 @@ if __name__ == '__main__':
 		#retrieve header, if unsuccessful decode not possible
 		passenger_height, passenger_width = read_header()		
 
-		output = Image.new('RGB', (passenger_height,passenger_width))	#SIZE IS NOT APPROPRIATE
+		output = Image.new('RGB', (passenger_height,passenger_width))	
 		show(composite_image, output)
+		output.save(sys.argv[3], "PNG", optimize=True)
 
 	else:
 		usage()
