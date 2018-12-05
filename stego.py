@@ -153,8 +153,6 @@ def write_header():
 				r = int(r,2)
 				#print r
 				i = i + 1
-			else:
-				break;
 			output.putpixel((x,y), (r,g,b))	
 
 def hide(passenger,carrier,output):
@@ -238,6 +236,7 @@ if __name__ == '__main__':
 	# Usage
 	# stego.py hide file.png carrier.png output.png
 	# stego.py show carrier.png output.png
+	"""
 	print("Hello")
 
 	x = 250
@@ -250,6 +249,7 @@ if __name__ == '__main__':
 		print ()
 
 	print dec_to_bin(x)[:6] + "01"	#checking to see if this add is possible
+	"""
 
 	"""program starts here"""
 	level = 2	#number of LSB positions to use up for encoding
